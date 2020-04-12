@@ -16,8 +16,10 @@ def draw_track(surf, track):
         pygame.draw.circle(surf, (255, 255, 255), (int(vertex.x), int(vertex.y)), track.width // 2)
     for checkpoint in track.checkpoints:
         pygame.draw.line(surf, (255, 0, 0), checkpoint[0], checkpoint[1])
-    if track.start:
-        pygame.draw.circle(surf, (255, 0, 0), (int(track.start.x), int(track.start.y)), 12)
+    if track.start_pos:
+        pygame.draw.circle(surf, (255, 0, 0), (int(track.start_pos.x), int(track.start_pos.y)), 12)
+    if track.active_checkpoint:
+        pygame.draw.line(surf, (0, 0, 255), track.active_checkpoint[0], track.active_checkpoint[1])
 
 
 def draw_button(surf, button):
@@ -50,10 +52,7 @@ def main():
     # update_background = False
 
     segoe_print = pygame.font.SysFont('segoe print', 25)
-    text_buttons = [segoe_print.render('Save current track', True, (127, 127, 127)),
-                    segoe_print.render('Load track 0', True, (127, 127, 127)),
-                    segoe_print.render('Clear active track', True, (127, 127, 127))]
-
+    text_buttons = [segoe_print.render(t, True, (127, 127, 127)) for t in ['Save current track', 'Load track 0', 'Clear active track', 'Start']]
     text_cycler = [segoe_print.render(t, True, (127, 127, 127)) for t in ['Drawing', 'Checkpoints', 'Start', 'Idle']]
 
     buttons = []
@@ -92,7 +91,7 @@ def main():
                         elif input_state == START:
                             game.track_m.active_track.set_start(pygame.math.Vector2(event.pos))
                     else:
-                        update_buttons = True
+                        # update_buttons = True
                         if input_state_cycler.is_inside(event.pos):
                             input_state = (input_state + 1) % 4
                         if buttons[0].is_inside(event.pos):
@@ -100,12 +99,14 @@ def main():
                             game.track_m.save_active_track()
                         if buttons[1].is_inside(event.pos):
                             print('loaded')
-                            update_background = True
-                            update_track = True
+                            # update_background = True
+                            # update_track = True
                             game.track_m.load_to_active_track('track_0.pickle')
                         if buttons[2].is_inside(event.pos):
-                            update_background = True
+                            # update_background = True
                             game.track_m.clear_active_track()
+                        if buttons[3].is_inside(event.pos):
+                            game.start()
 
             # controls handling
             if event.type == pygame.KEYDOWN:

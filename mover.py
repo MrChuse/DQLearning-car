@@ -3,7 +3,7 @@ import pygame.math as math
 
 class Mover:
     def __init__(self, pos, direction):
-        self.pos = pos
+        self.pos = math.Vector2(pos)
         self.dir = direction
 
         self.vel = math.Vector2()
