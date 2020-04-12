@@ -1,11 +1,7 @@
-import track
-# import pygame
+from trackManager import TrackManager
 
 
 class Game:
-    track = track.Track(50)
 
     def __init__(self):
-        pass
-
-
+        self.track_m = TrackManager()
