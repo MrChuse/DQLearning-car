@@ -31,6 +31,7 @@ def main():
 
     # initialize game
     game = Game()
+    force = pygame.math.Vector2()
 
     # initialize rendering
     input_state = DRAWING
@@ -96,18 +97,43 @@ def main():
                             update_background = True
                             game.track_m.clear_active_track()
 
+            # controls handling
+            if event.type == pygame.KEYDOWN:
+                #print('down a key')
+                if event.key == pygame.K_RIGHT:
+                    force.x += 1
+                if event.key == pygame.K_LEFT:
+                    force.x -= 1
+                if event.key == pygame.K_DOWN:
+                    force.y += 1
+                if event.key == pygame.K_UP:
+                    force.y -= 1
+
+            if event.type == pygame.KEYUP:
+                # print('up a key')
+                if event.key == pygame.K_RIGHT:
+                    force.x -= 1
+                if event.key == pygame.K_LEFT:
+                    force.x += 1
+                if event.key == pygame.K_DOWN:
+                    force.y -= 1
+                if event.key == pygame.K_UP:
+                    force.y += 1
+
+        if force.length() > 0:
+            force_ = force.normalize()
+            force_.scale_to_length(0.0001)
+            game.agent.add_force(force_, 0)
+
+        game.agent.update()
+        # print(int(game.agent.pos.x), int(game.agent.pos.y))
+
         # drawing
-        if update_background:
-            update_background = False
-            pygame.draw.rect(screen, (0, 0, 0), screen.get_rect())
-        if update_track:
-            update_track = False
-            draw_track(screen, game.track_m.active_track)
-        if update_buttons:
-            update_buttons = False
-            # input state
-            for button in buttons:
-                draw_button(screen, button)
+        pygame.draw.rect(screen, (0, 0, 0), screen.get_rect())
+        draw_track(screen, game.track_m.active_track)
+        for button in buttons:
+            draw_button(screen, button)
+        pygame.draw.circle(screen, (255, 255, 0), (int(game.agent.pos.x), int(game.agent.pos.y)), 12)
         pygame.display.flip()
 
 
