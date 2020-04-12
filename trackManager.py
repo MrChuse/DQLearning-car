@@ -25,3 +25,5 @@ class TrackManager:
 
     def clear_active_track(self):
         self.active_track.vertices = []
+        self.active_track.checkpoints = []
+        self.active_track.start = None
