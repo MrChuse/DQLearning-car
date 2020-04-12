@@ -1,7 +1,7 @@
 class Track:
 
-    def __init__(self, width, vertices=[]):
-        self.vertices = vertices
+    def __init__(self, width, vertices=None):
+        self.vertices = vertices if vertices is not None else []
         self.width = width
         self.magnet_threshold = 400
 
