@@ -84,10 +84,10 @@ def main():
                             game.track_m.active_track.add_vertex(pygame.math.Vector2(event.pos))
                         elif input_state == CHECKPOINTS:
                             if checkpoint_start:
-                                game.track_m.active_track.add_checkpoint(checkpoint_start, event.pos)
+                                game.track_m.active_track.add_checkpoint(checkpoint_start, pygame.math.Vector2(event.pos))
                                 checkpoint_start = None
                             else:
-                                checkpoint_start = event.pos
+                                checkpoint_start = pygame.math.Vector2(event.pos)
                         elif input_state == START:
                             game.track_m.active_track.set_start(pygame.math.Vector2(event.pos))
                     else:
@@ -136,7 +136,7 @@ def main():
             force_.scale_to_length(0.0001)
             game.agent.add_force(force_, 0)
 
-        game.agent.update()
+        game.update()
         # print(int(game.agent.pos.x), int(game.agent.pos.y))
 
         # drawing

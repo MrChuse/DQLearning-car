@@ -12,7 +12,13 @@ class Mover:
         self.acc = math.Vector2()
         self.a_acc = 0
 
+        self.prev_pos = math.Vector2(pos)
+        self.prev_dir = direction
+
     def update(self):
+        self.prev_pos.update(self.pos)
+        self.prev_dir = self.dir
+
         self.pos += self.vel
         self.dir += self.a_vel
 
