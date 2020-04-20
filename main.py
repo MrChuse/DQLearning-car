@@ -1,7 +1,11 @@
 import pygame
+import numpy as np
+
 from core import Game
 from button import Button
 from cycler import Cycler
+import nn
+from DQLearningBrain import Brain
 
 IDLE = 0
 DRAWING = 1
@@ -10,10 +14,9 @@ START = 3
 
 
 def draw_track(surf, track):
-    if len(track.vertices) > 1:
-        pygame.draw.lines(surf, (255, 255, 255), False, track.vertices, track.width)
-    for vertex in track.vertices:
-        pygame.draw.circle(surf, (255, 255, 255), (int(vertex.x), int(vertex.y)), track.width // 2)
+    for cycle in track.vertices:
+        if len(cycle) > 1:
+            pygame.draw.lines(surf, (255, 255, 255), False, cycle)
     for checkpoint in track.checkpoints:
         pygame.draw.line(surf, (255, 0, 0), checkpoint[0], checkpoint[1])
     if track.start_pos:
@@ -39,8 +42,23 @@ def main():
     screen = pygame.display.set_mode((1000, 500))
 
     # initialize game
-    game = Game()
+    need_reset = True
+    need_update = True
+    training = False
+    epoch_counter = 0
+    controlled_by_human = False
+    new_state = None
+    game = Game(8)
+    layers = ((nn.Dense, (4, 100, 0.01)),
+              (nn.Tanh, tuple()),
+              (nn.Dense, (100, 100, 0.01)),
+              (nn.Tanh, tuple()),
+              (nn.Dense, (100, 8, 0.01)),
+              )
+    net = nn.NeuralNetwork(layers)
+    brain = Brain(net, nn.mse(), 8)
     force = pygame.math.Vector2()
+    game.track_m.load_to_active_track('track_0.pickle')
 
     # initialize rendering
     input_state = DRAWING
@@ -50,9 +68,10 @@ def main():
     # update_buttons = True
     # update_track = False
     # update_background = False
+    draw = True
 
     segoe_print = pygame.font.SysFont('segoe print', 25)
-    text_buttons = [segoe_print.render(t, True, (127, 127, 127)) for t in ['Save current track', 'Load track 0', 'Clear active track', 'Start']]
+    text_buttons = [segoe_print.render(t, True, (127, 127, 127)) for t in ['Next cycle', 'Save current track', 'Load track 0', 'Clear active track', 'Start', 'Start training']]
     text_cycler = [segoe_print.render(t, True, (127, 127, 127)) for t in ['Drawing', 'Checkpoints', 'Start', 'Idle']]
 
     buttons = []
@@ -77,10 +96,9 @@ def main():
             # mouse presses handling
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == pygame.BUTTON_LEFT:
-                    # if it is LMB pressed
+                    # if LMB is pressed
                     if event.pos[0] < right_bar_x:
                         if input_state == DRAWING:
-                            update_track = True
                             game.track_m.active_track.add_vertex(pygame.math.Vector2(event.pos))
                         elif input_state == CHECKPOINTS:
                             if checkpoint_start:
@@ -95,58 +113,102 @@ def main():
                         if input_state_cycler.is_inside(event.pos):
                             input_state = (input_state + 1) % 4
                         if buttons[0].is_inside(event.pos):
+                            print('current cycle is', game.track_m.active_track.current_cycle)
+                            game.track_m.active_track.move_current_cycle()
+                        if buttons[1].is_inside(event.pos):
                             print('saved')
                             game.track_m.save_active_track()
-                        if buttons[1].is_inside(event.pos):
+                        if buttons[2].is_inside(event.pos):
                             print('loaded')
                             # update_background = True
                             # update_track = True
                             game.track_m.load_to_active_track('track_0.pickle')
-                        if buttons[2].is_inside(event.pos):
+                        if buttons[3].is_inside(event.pos):
                             # update_background = True
                             game.track_m.clear_active_track()
-                        if buttons[3].is_inside(event.pos):
+                        if buttons[4].is_inside(event.pos):
                             game.start()
-
+                        if buttons[5].is_inside(event.pos):
+                            training = not training
+                if event.button == pygame.BUTTON_RIGHT:
+                    # if RMB is pressed
+                    if buttons[0].is_inside(event.pos):
+                        game.track_m.active_track.add_cycle()
+                        print('cycles number', len(game.track_m.active_track.vertices))
             # controls handling
-            if event.type == pygame.KEYDOWN:
-                # print('down a key')
-                if event.key == pygame.K_RIGHT:
-                    force.x += 1
-                if event.key == pygame.K_LEFT:
-                    force.x -= 1
-                if event.key == pygame.K_DOWN:
-                    force.y += 1
-                if event.key == pygame.K_UP:
-                    force.y -= 1
 
-            if event.type == pygame.KEYUP:
-                # print('up a key')
-                if event.key == pygame.K_RIGHT:
-                    force.x -= 1
-                if event.key == pygame.K_LEFT:
-                    force.x += 1
-                if event.key == pygame.K_DOWN:
-                    force.y -= 1
-                if event.key == pygame.K_UP:
-                    force.y += 1
+                if event.type == pygame.KEYDOWN:
+                    print('down a key')
+                    if event.key == pygame.K_SPACE:
+                        print(draw)
+                        draw = not draw
+                    if controlled_by_human:
+                        if event.key == pygame.K_RIGHT:
+                            force.x += 1
+                        if event.key == pygame.K_LEFT:
+                            force.x -= 1
+                        if event.key == pygame.K_DOWN:
+                            force.y += 1
+                        if event.key == pygame.K_UP:
+                            force.y -= 1
 
-        if force.length() > 0:
-            force_ = force.normalize()
-            force_.scale_to_length(0.0001)
-            game.agent.add_force(force_, 0)
+                if event.type == pygame.KEYUP:
+                    print('up a key')
+                    if controlled_by_human:
+                        if event.key == pygame.K_RIGHT:
+                            force.x -= 1
+                        if event.key == pygame.K_LEFT:
+                            force.x += 1
+                        if event.key == pygame.K_DOWN:
+                            force.y -= 1
+                        if event.key == pygame.K_UP:
+                            force.y += 1
 
-        game.update()
+
+
+
+
+        if training:
+            if need_reset:
+                need_reset = False
+                game.start()
+            if need_update:
+                if new_state is None:
+                    state = game.get_state()
+                    state = np.array((state[0].x/100, state[0].y/100, state[1].x/100, state[1].y/100))
+                else:
+                    state = new_state
+                action = brain.get_action(state)
+                #print(action)
+                reward, terminal = game.update(action)
+                new_state = game.get_state()
+                new_state = np.array((new_state[0].x/100, new_state[0].y/100, new_state[1].x/100, new_state[1].y/100))
+                brain.add_replay_memory(state, action, reward, new_state)
+                training_num = brain.counter
+                if brain.counter > 256:
+                    training_num = 256
+                for i in range(training_num):
+                    brain.learn_from_replay_memory()
+                if terminal:
+                    epoch_counter += 1
+                    print(epoch_counter, brain.eps)
+                    need_reset = True
+                    new_state = None
+                    brain.decrease_eps()
+
+
+
         # print(int(game.agent.pos.x), int(game.agent.pos.y))
 
         # drawing
-        pygame.draw.rect(screen, (0, 0, 0), screen.get_rect())
-        draw_track(screen, game.track_m.active_track)
-        draw_button(screen, input_state_cycler.get_active_button())
-        for button in buttons:
-            draw_button(screen, button)
-        pygame.draw.circle(screen, (255, 255, 0), (int(game.agent.pos.x), int(game.agent.pos.y)), 12)
-        pygame.display.flip()
+        if draw:
+            pygame.draw.rect(screen, (0, 0, 0), screen.get_rect())
+            draw_track(screen, game.track_m.active_track)
+            draw_button(screen, input_state_cycler.get_active_button())
+            for button in buttons:
+                draw_button(screen, button)
+            pygame.draw.circle(screen, (255, 255, 0), (int(game.agent.pos.x), int(game.agent.pos.y)), 12)
+            pygame.display.flip()
 
 
 if __name__ == "__main__":
